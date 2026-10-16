@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Debug the Mascot</title>
+  <meta name="description" content="Solve the sums, squash the bugs and set the mascot free!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="top">
+      <h1>Debug the mascot</h1>
+      <button id="mute" class="icon-btn" aria-label="Turn sound off" title="Sound">🔊</button>
+    </header>
+
+    <main class="layout">
+      <!-- Mascot + secret word -->
+      <section class="stage" id="stage" aria-label="Mascot">
+        <div class="bubble" id="bubble" hidden></div>
+
+        <div class="mascot-wrap" id="mascotWrap">
+          <svg id="mascot" viewBox="0 0 300 320" role="img" aria-label="A friendly teal creature">
+            <!-- Part 5: antenna and arms -->
+            <g class="part broken" data-part="4">
+              <line x1="150" y1="64" x2="150" y2="34" stroke="#1f2a44" stroke-width="6" stroke-linecap="round"/>
+              <circle cx="150" cy="26" r="12" fill="#ffd23f" stroke="#1f2a44" stroke-width="5"/>
+              <ellipse class="arm armL" cx="52" cy="195" rx="20" ry="36" fill="#2bb3a7" stroke="#1f2a44" stroke-width="5" transform="rotate(18 52 195)"/>
+              <ellipse class="arm armR" cx="248" cy="195" rx="20" ry="36" fill="#2bb3a7" stroke="#1f2a44" stroke-width="5" transform="rotate(-18 248 195)"/>
+            </g>
+            <!-- Part 1: body -->
+            <g class="part broken" data-part="0">
+              <path d="M150 62 C70 62 44 130 47 200 C49 262 90 288 150 288 C210 288 251 262 253 200 C256 130 230 62 150 62 Z"
+                    fill="#4fd1c5" stroke="#1f2a44" stroke-width="6" stroke-linejoin="round"/>
+            </g>
+            <!-- Part 2: belly and feet -->
+            <g class="part broken" data-part="1">
+              <ellipse cx="150" cy="226" rx="54" ry="46" fill="#b8f2ea"/>
+              <ellipse cx="108" cy="294" rx="30" ry="14" fill="#2bb3a7" stroke="#1f2a44" stroke-width="5"/>
+              <ellipse cx="192" cy="294" rx="30" ry="14" fill="#2bb3a7" stroke="#1f2a44" stroke-width="5"/>
+            </g>
+            <!-- Part 3: eyes -->
+            <g class="part broken" data-part="2">
+              <g class="eyes">
+                <circle cx="113" cy="142" r="27" fill="#fff" stroke="#1f2a44" stroke-width="5"/>
+                <circle cx="187" cy="142" r="27" fill="#fff" stroke="#1f2a44" stroke-width="5"/>
+                <circle class="pupil" cx="113" cy="146" r="12" fill="#1f2a44"/>
+                <circle class="pupil" cx="187" cy="146" r="12" fill="#1f2a44"/>
+                <circle class="pupil" cx="108" cy="140" r="4" fill="#fff"/>
+                <circle class="pupil" cx="182" cy="140" r="4" fill="#fff"/>
+              </g>
+            </g>
+            <!-- Part 4: cheeks and mouth -->
+            <g class="part broken" data-part="3">
+              <circle cx="80" cy="188" r="12" fill="#ff8fa3" opacity=".85"/>
+              <circle cx="220" cy="188" r="12" fill="#ff8fa3" opacity=".85"/>
+              <path class="mouth mouth-calm" d="M128 192 Q150 206 172 192" fill="none" stroke="#1f2a44" stroke-width="5" stroke-linecap="round"/>
+              <g class="mouth mouth-happy">
+                <path d="M116 182 Q150 232 184 182 Z" fill="#7a1f3d" stroke="#1f2a44" stroke-width="5" stroke-linejoin="round"/>
+                <path d="M134 205 Q150 192 166 205 Q150 218 134 205 Z" fill="#ff8fa3"/>
+              </g>
+            </g>
+          </svg>
+
+          <img id="mascotImg" alt="Mascot" hidden>
+          <div class="glitch" id="glitch" aria-hidden="true"></div>
+          <div class="bugs" id="bugs" aria-hidden="true"></div>
+        </div>
+
+        <div class="word" id="word" aria-label="Secret word"></div>
+      </section>
+
+      <!-- Game panel -->
+      <section class="panel">
+        <!-- Start -->
+        <div class="screen" id="screenStart">
+          <h2>Oh no, a glitch!</h2>
+          <p class="lead">Something is hiding in a cloud of bugs. Solve each sum, turn the answer into a letter, and squash the bugs one by one.</p>
+          <label class="field">
+            <span>What's your name? (optional)</span>
+            <input id="nameInput" type="text" maxlength="20" autocomplete="off" placeholder="Type your name">
+          </label>
+          <button id="startBtn" class="btn primary">Start debugging</button>
+        </div>
+
+        <!-- Play -->
+        <div class="screen" id="screenPlay" hidden>
+          <div class="progress" id="progress" aria-hidden="true"></div>
+          <p class="step" id="stepLabel">Bug 1 of 5</p>
+
+          <div id="askBox">
+            <p class="sum" id="sumText">2 + 2</p>
+            <form id="answerForm" autocomplete="off">
+              <input id="answer" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" aria-label="Your answer" placeholder="?">
+              <button class="btn primary" type="submit">Check</button>
+            </form>
+            <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+            <p class="hint" id="hint" hidden></p>
+            <p class="key">Answer → letter: A = 1, B = 2 … Z = 26</p>
+          </div>
+
+          <div id="decodeBox" hidden>
+            <p class="decode-line" id="decodeLine"></p>
+            <div class="alpha" id="alpha" aria-hidden="true"></div>
+          </div>
+        </div>
+
+        <!-- Win -->
+        <div class="screen" id="screenWin" hidden>
+          <h2 id="winTitle">You did it!</h2>
+          <p class="lead" id="winText"></p>
+          <div class="row">
+            <button id="speakBtn" class="btn ghost">🔊 Hear it</button>
+            <button id="againBtn" class="btn primary">Play again</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <canvas id="confetti" aria-hidden="true"></canvas>
+  <script src="config.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
