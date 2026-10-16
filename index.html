@@ -2,125 +2,138 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Debug the Mascot</title>
-  <meta name="description" content="Solve the sums, squash the bugs and set the mascot free!">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Debug Zippy | Bhanzu</title>
+  <meta name="description" content="Zippy is stuck in the code! Solve the sums, decode the letters and set the tiger free.">
+  <meta name="theme-color" content="#F7F7F7">
+  <link rel="icon" type="image/png" href="assets/brand/favicon.png">
+  <link rel="apple-touch-icon" href="assets/brand/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Roboto:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Tabler-style icons (the icon set named in the Bhanzu style sheet) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></symbol>
+    <symbol id="i-volume-off" viewBox="0 0 24 24"><path d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464"/><path d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615"/><path d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664"/><path d="M3 3l18 18"/></symbol>
+    <symbol id="i-backspace" viewBox="0 0 24 24"><path d="M20 6a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-11l-5 -5a1.5 1.5 0 0 1 0 -2l5 -5z"/><path d="M12 10l4 4m0 -4l-4 4"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M3 12h1m8 -9v1m8 8h1m-15.4 -6.4l.7 .7m12.1 -.7l-.7 .7"/><path d="M9 16a5 5 0 1 1 6 0a3.5 3.5 0 0 0 -1 3a2 2 0 0 1 -4 0a3.5 3.5 0 0 0 -1 -3"/><path d="M9.7 17l4.6 0"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5l10 -10"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/></symbol>
+  </svg>
+
+  <!-- Brand organic shapes, kept behind everything -->
+  <div class="bg" aria-hidden="true">
+    <i class="blob b-orange"></i><i class="blob b-yellow"></i><i class="blob b-blue"></i><i class="blob b-grey"></i>
+  </div>
+
   <div class="app">
     <header class="top">
-      <h1>Debug the mascot</h1>
-      <button id="mute" class="icon-btn" aria-label="Turn sound off" title="Sound">🔊</button>
+      <img class="logo" src="assets/brand/bhanzu-logo.png" alt="Bhanzu" width="720" height="216">
+      <button id="mute" class="icon-btn" type="button" aria-label="Turn sound off" title="Sound">
+        <svg class="ico" aria-hidden="true"><use href="#i-volume"/></svg>
+      </button>
     </header>
 
     <main class="layout">
-      <!-- Mascot + secret word -->
-      <section class="stage" id="stage" aria-label="Mascot">
-        <div class="bubble" id="bubble" hidden></div>
-
-        <div class="mascot-wrap" id="mascotWrap">
-          <svg id="mascot" viewBox="0 0 300 320" role="img" aria-label="A friendly teal creature">
-            <!-- Part 5: antenna and arms -->
-            <g class="part broken" data-part="4">
-              <line x1="150" y1="64" x2="150" y2="34" stroke="#1f2a44" stroke-width="6" stroke-linecap="round"/>
-              <circle cx="150" cy="26" r="12" fill="#ffd23f" stroke="#1f2a44" stroke-width="5"/>
-              <ellipse class="arm armL" cx="52" cy="195" rx="20" ry="36" fill="#2bb3a7" stroke="#1f2a44" stroke-width="5" transform="rotate(18 52 195)"/>
-              <ellipse class="arm armR" cx="248" cy="195" rx="20" ry="36" fill="#2bb3a7" stroke="#1f2a44" stroke-width="5" transform="rotate(-18 248 195)"/>
-            </g>
-            <!-- Part 1: body -->
-            <g class="part broken" data-part="0">
-              <path d="M150 62 C70 62 44 130 47 200 C49 262 90 288 150 288 C210 288 251 262 253 200 C256 130 230 62 150 62 Z"
-                    fill="#4fd1c5" stroke="#1f2a44" stroke-width="6" stroke-linejoin="round"/>
-            </g>
-            <!-- Part 2: belly and feet -->
-            <g class="part broken" data-part="1">
-              <ellipse cx="150" cy="226" rx="54" ry="46" fill="#b8f2ea"/>
-              <ellipse cx="108" cy="294" rx="30" ry="14" fill="#2bb3a7" stroke="#1f2a44" stroke-width="5"/>
-              <ellipse cx="192" cy="294" rx="30" ry="14" fill="#2bb3a7" stroke="#1f2a44" stroke-width="5"/>
-            </g>
-            <!-- Part 3: eyes -->
-            <g class="part broken" data-part="2">
-              <g class="eyes">
-                <circle cx="113" cy="142" r="27" fill="#fff" stroke="#1f2a44" stroke-width="5"/>
-                <circle cx="187" cy="142" r="27" fill="#fff" stroke="#1f2a44" stroke-width="5"/>
-                <circle class="pupil" cx="113" cy="146" r="12" fill="#1f2a44"/>
-                <circle class="pupil" cx="187" cy="146" r="12" fill="#1f2a44"/>
-                <circle class="pupil" cx="108" cy="140" r="4" fill="#fff"/>
-                <circle class="pupil" cx="182" cy="140" r="4" fill="#fff"/>
-              </g>
-            </g>
-            <!-- Part 4: cheeks and mouth -->
-            <g class="part broken" data-part="3">
-              <circle cx="80" cy="188" r="12" fill="#ff8fa3" opacity=".85"/>
-              <circle cx="220" cy="188" r="12" fill="#ff8fa3" opacity=".85"/>
-              <path class="mouth mouth-calm" d="M128 192 Q150 206 172 192" fill="none" stroke="#1f2a44" stroke-width="5" stroke-linecap="round"/>
-              <g class="mouth mouth-happy">
-                <path d="M116 182 Q150 232 184 182 Z" fill="#7a1f3d" stroke="#1f2a44" stroke-width="5" stroke-linejoin="round"/>
-                <path d="M134 205 Q150 192 166 205 Q150 218 134 205 Z" fill="#ff8fa3"/>
-              </g>
-            </g>
-          </svg>
-
-          <img id="mascotImg" alt="Mascot" hidden>
-          <div class="glitch" id="glitch" aria-hidden="true"></div>
-          <div class="bugs" id="bugs" aria-hidden="true"></div>
+      <!-- ============ Stage: the mascot emerges here ============ -->
+      <section class="stage card" id="stage" aria-label="The mascot">
+        <div class="word-wrap">
+          <p class="eyebrow" id="wordLabel">secret word</p>
+          <div class="word" id="word" role="img" aria-label="Secret word"></div>
         </div>
 
-        <div class="word" id="word" aria-label="Secret word"></div>
+        <div class="bubble-slot">
+          <div class="bubble" id="bubble" hidden></div>
+        </div>
+
+        <div class="tiger" id="tiger" role="img" aria-label="A friendly tiger cub">
+          <img class="ghost" id="ghost" alt="" aria-hidden="true">
+          <div class="reveal" id="reveal"><div class="poses" id="poses"></div></div>
+          <div class="scan" id="scan" aria-hidden="true"></div>
+          <div class="sparkles" id="sparkles" aria-hidden="true"></div>
+        </div>
       </section>
 
-      <!-- Game panel -->
-      <section class="panel">
+      <!-- ============ Game panel ============ -->
+      <section class="panel card">
         <!-- Start -->
         <div class="screen" id="screenStart">
-          <h2>Oh no, a glitch!</h2>
-          <p class="lead">Something is hiding in a cloud of bugs. Solve each sum, turn the answer into a letter, and squash the bugs one by one.</p>
-          <label class="field">
-            <span>What's your name? (optional)</span>
-            <input id="nameInput" type="text" maxlength="20" autocomplete="off" placeholder="Type your name">
+          <p class="eyebrow">zippy is stuck in the code</p>
+          <h1>Debug Zippy!</h1>
+          <p class="lead">Solve a sum, turn the answer into a letter, and watch Zippy appear a little more each time. Crack all five clues to set the tiger free.</p>
+          <div class="chips" aria-hidden="true">
+            <span class="chip c-orange">5 sums</span><span class="chip c-blue">1 secret word</span><span class="chip c-yellow">1 big surprise</span>
+          </div>
+          <label class="field" for="nameInput">
+            <span>What's your name? <em>(optional)</em></span>
+            <input id="nameInput" type="text" maxlength="20" autocomplete="off" autocapitalize="words" placeholder="Type your name">
           </label>
-          <button id="startBtn" class="btn primary">Start debugging</button>
+          <button id="startBtn" class="btn primary" type="button">Start</button>
         </div>
 
         <!-- Play -->
         <div class="screen" id="screenPlay" hidden>
-          <div class="progress" id="progress" aria-hidden="true"></div>
-          <p class="step" id="stepLabel">Bug 1 of 5</p>
+          <ol class="stepper" id="stepper" aria-label="Progress"></ol>
 
           <div id="askBox">
-            <p class="sum" id="sumText">2 + 2</p>
-            <form id="answerForm" autocomplete="off">
-              <input id="answer" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" aria-label="Your answer" placeholder="?">
-              <button class="btn primary" type="submit">Check</button>
+            <div class="clue">
+              <p class="clue-label" id="clueLabel">Clue 1 of 5</p>
+              <p class="sum" id="sumText">2 + 2 = ?</p>
+              <p class="clue-help">Turn the answer into a letter. A = 1, B = 2 … Z = 26</p>
+            </div>
+
+            <form id="answerForm" autocomplete="off" novalidate>
+              <label class="sr-only" for="answer">Your answer</label>
+              <input id="answer" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="?">
+              <button class="btn primary check-btn" type="submit">Check</button>
             </form>
+
             <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+
+            <div class="keypad" id="keypad" aria-label="Number pad">
+              <button type="button" data-key="1">1</button><button type="button" data-key="2">2</button><button type="button" data-key="3">3</button>
+              <button type="button" data-key="4">4</button><button type="button" data-key="5">5</button><button type="button" data-key="6">6</button>
+              <button type="button" data-key="7">7</button><button type="button" data-key="8">8</button><button type="button" data-key="9">9</button>
+              <button type="button" data-key="back" aria-label="Delete"><svg class="ico" aria-hidden="true"><use href="#i-backspace"/></svg></button>
+              <button type="button" data-key="0">0</button>
+              <button type="button" data-key="go" class="go" aria-label="Check answer"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></button>
+            </div>
+
+            <button type="button" class="btn-text" id="hintBtn"><svg class="ico" aria-hidden="true"><use href="#i-bulb"/></svg>Need a hint?</button>
             <p class="hint" id="hint" hidden></p>
-            <p class="key">Answer → letter: A = 1, B = 2 … Z = 26</p>
           </div>
 
           <div id="decodeBox" hidden>
             <p class="decode-line" id="decodeLine"></p>
             <div class="alpha" id="alpha" aria-hidden="true"></div>
+            <div class="decode-result">
+              <span class="decode-note" id="decodeNote"></span>
+              <span class="big-letter" id="bigLetter" aria-hidden="true"></span>
+            </div>
+            <button class="btn primary" id="nextBtn" type="button" disabled>Next clue</button>
           </div>
         </div>
 
         <!-- Win -->
         <div class="screen" id="screenWin" hidden>
+          <p class="eyebrow">code cracker unlocked</p>
           <h2 id="winTitle">You did it!</h2>
+          <div class="stars" id="stars" aria-hidden="true"></div>
           <p class="lead" id="winText"></p>
           <div class="row">
-            <button id="speakBtn" class="btn ghost">🔊 Hear it</button>
-            <button id="againBtn" class="btn primary">Play again</button>
+            <button id="againBtn" class="btn primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Play again</button>
+            <button id="hearBtn" class="btn-text" type="button"><svg class="ico" aria-hidden="true"><use href="#i-volume"/></svg>Hear it again</button>
           </div>
         </div>
       </section>
     </main>
   </div>
 
+  <p class="sr-only" id="sr" role="status" aria-live="polite"></p>
   <canvas id="confetti" aria-hidden="true"></canvas>
   <script src="config.js"></script>
   <script src="game.js"></script>

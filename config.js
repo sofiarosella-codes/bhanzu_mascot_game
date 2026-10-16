@@ -1,18 +1,30 @@
 /*
-  Game settings. Edit this file to change the sums, the secret word or the mascot.
+  Game settings. Edit this file to change the sums, the secret word, the mascot or what it says.
 
   Each round is one sum. The answer must be between 1 and 26,
   because it gets turned into a letter (A = 1, B = 2 ... Z = 26).
-  The letters of all the answers, in order, spell the mascot's secret word.
+  The letters of all the answers, in order, spell the secret word.
 
   Default word: 26 -> Z, 9 -> I, 16 -> P, 16 -> P, 25 -> Y  =  ZIPPY
 */
 window.GAME_CONFIG = {
   mascotName: "Zippy",
 
-  // To use your own artwork, put a PNG/SVG in this folder and set e.g. "zippy.png".
-  // Leave it as "" to use the built-in drawn mascot.
-  mascotImage: "",
+  // The tiger's expressions. To use sharper artwork, export the same seven poses
+  // from Figma (2x or 3x PNG, transparent background) and overwrite the files in assets/tiger/.
+  // Keep the same file names, or point these paths somewhere else.
+  poses: {
+    calm:    "assets/tiger/calm.png",     // waiting to be found
+    happy:   "assets/tiger/happy.png",    // right answer
+    sad:     "assets/tiger/sad.png",      // wrong answer
+    cry:     "assets/tiger/cry.png",      // three wrong answers in a row
+    shocked: "assets/tiger/shocked.png",  // the moment it wakes up
+    party:   "assets/tiger/party.png",    // celebration, with confetti
+    cheer:   "assets/tiger/cheer.png"     // celebration
+  },
+
+  // How far down the image the mascot's head starts (in %). Keeps the last step of the reveal snug.
+  revealTop: 6,
 
   rounds: [
     { sum: "13 × 2", answer: 26, hint: "Try 10 × 2 first, then add 3 × 2." },
@@ -22,12 +34,22 @@ window.GAME_CONFIG = {
     { sum: "5 × 5",  answer: 25, hint: "Count in fives: 5, 10, 15, 20 ..." }
   ],
 
-  // {name} is replaced by the child's name (or "friend" if left blank).
+  // {name} becomes the child's name (or "friend" if left blank). {mascot} becomes mascotName.
   messages: {
-    correct: ["Bug squashed!", "Nice one!", "You found it!", "Brilliant!", "Yes! One less bug!"],
+    intro: "Psst! I'm stuck in the code. Can you help me out?",
+    // What the mascot says after each correct clue, as more of it appears (one line per clue except the last).
+    stages: [
+      "Ooh, something is tickling my tummy!",
+      "I can feel my tummy now. Keep going!",
+      "Are those my paws? Another clue, please!",
+      "I can see you! Just one more to go!"
+    ],
+    ready: "That's every clue! Tap the button to set me free.",
     wrong: ["Not quite. Have another go!", "So close. Try again!", "Take your time, you can do it!"],
-    winTitle: "You set {mascot} free!",
-    // What the mascot says when it comes to life.
-    thanks: "Thank you for finding me, {name}! You solved every sum and squashed every bug. You set me free! Thanks for playing with me!"
+    wrongBubble: ["Oops! I believe in you!", "Hmm, not that one. Try again!", "Don't give up, {name}!"],
+    waking: "Wait... is that really me? I'm free!",
+    winTitle: "You did it, {name}!",
+    // What the mascot says (and speaks aloud) when it comes to life.
+    thanks: "Thank you for finding me, {name}! You solved every sum and set me free. Thanks for playing with me!"
   }
 };

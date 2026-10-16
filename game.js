@@ -4,56 +4,61 @@
   var CFG = window.GAME_CONFIG;
   var ROUNDS = CFG.rounds;
   var TOTAL = ROUNDS.length;
-  var PART_COUNT = 5; // matches data-part 0..4 in index.html
+  var MSG = CFG.messages;
+
+  var mq = function (q) { return !!(window.matchMedia && window.matchMedia(q).matches); };
+  var REDUCED = mq("(prefers-reduced-motion: reduce)");
+  var REVEAL_MS = REDUCED ? 0 : 1900;
+  var HEAD_TOP = typeof CFG.revealTop === "number" ? CFG.revealTop : 6;
 
   function $(id) { return document.getElementById(id); }
   var el = {
-    stage: $("stage"), bubble: $("bubble"), wrap: $("mascotWrap"), svg: $("mascot"), img: $("mascotImg"),
-    glitch: $("glitch"), bugs: $("bugs"), word: $("word"),
+    stage: $("stage"), tiger: $("tiger"), ghost: $("ghost"), reveal: $("reveal"), poses: $("poses"),
+    scan: $("scan"), sparkles: $("sparkles"), bubble: $("bubble"), word: $("word"), wordLabel: $("wordLabel"),
+    sr: $("sr"),
     start: $("screenStart"), play: $("screenPlay"), win: $("screenWin"),
     nameInput: $("nameInput"), startBtn: $("startBtn"),
-    progress: $("progress"), stepLabel: $("stepLabel"),
-    askBox: $("askBox"), sumText: $("sumText"), form: $("answerForm"), answer: $("answer"),
-    feedback: $("feedback"), hint: $("hint"),
-    decodeBox: $("decodeBox"), decodeLine: $("decodeLine"), alpha: $("alpha"),
-    winTitle: $("winTitle"), winText: $("winText"), speakBtn: $("speakBtn"), againBtn: $("againBtn"),
+    stepper: $("stepper"), askBox: $("askBox"), clueLabel: $("clueLabel"), sumText: $("sumText"),
+    form: $("answerForm"), answer: $("answer"), feedback: $("feedback"), keypad: $("keypad"),
+    hintBtn: $("hintBtn"), hint: $("hint"),
+    decodeBox: $("decodeBox"), decodeLine: $("decodeLine"), alpha: $("alpha"), decodeNote: $("decodeNote"),
+    bigLetter: $("bigLetter"), nextBtn: $("nextBtn"),
+    winTitle: $("winTitle"), stars: $("stars"), winText: $("winText"), hearBtn: $("hearBtn"), againBtn: $("againBtn"),
     mute: $("mute"), confetti: $("confetti")
   };
 
-  var state = { idx: 0, name: "", wrong: 0, muted: false, busy: false, thanks: "" };
-  var bugEls = [];
+  var state = { idx: 0, solved: 0, name: "", wrong: 0, streakWrong: 0, mistakes: 0, muted: false, busy: false, thanks: "" };
 
-  /* ---------- helpers ---------- */
+  /* ---------- small helpers ---------- */
   function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
   function letterFor(n) { return String.fromCharCode(64 + n); }
   function fill(text) {
-    return text.replace(/\{name\}/g, state.name || "friend").replace(/\{mascot\}/g, CFG.mascotName);
+    return String(text).replace(/\{name\}/g, state.name || "friend").replace(/\{mascot\}/g, CFG.mascotName);
   }
+  function announce(text) { el.sr.textContent = ""; setTimeout(function () { el.sr.textContent = text; }, 30); }
 
-  // Sanity check the config so a typo is obvious in the console.
+  var timers = [];
+  function later(fn, ms) { var t = setTimeout(fn, ms); timers.push(t); return t; }
+  function clearTimers() { timers.forEach(function (t) { clearTimeout(t); clearInterval(t); }); timers = []; }
+
   ROUNDS.forEach(function (r, i) {
-    if (!(r.answer >= 1 && r.answer <= 26)) {
-      console.warn("Round " + (i + 1) + ": answer must be between 1 and 26 to become a letter.");
-    }
+    if (!(r.answer >= 1 && r.answer <= 26)) console.warn("Round " + (i + 1) + ": answer must be between 1 and 26 to become a letter.");
   });
 
   /* ---------- sound ---------- */
   var audioCtx = null;
   function ctx() {
-    if (!audioCtx) {
-      var AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
+    if (!audioCtx) { var AC = window.AudioContext || window.webkitAudioContext; if (AC) audioCtx = new AC(); }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
     return audioCtx;
   }
-  function tone(freq, start, dur, type, vol) {
+  function tone(freq, start, dur, type, vol, freqEnd) {
     var c = ctx();
     if (!c || state.muted) return;
-    var o = c.createOscillator();
-    var g = c.createGain();
+    var o = c.createOscillator(), g = c.createGain(), t = c.currentTime + start;
     o.type = type || "sine";
-    o.frequency.value = freq;
-    var t = c.currentTime + start;
+    o.frequency.setValueAtTime(freq, t);
+    if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol || 0.15, t + 0.02);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
@@ -61,244 +66,327 @@
     o.start(t); o.stop(t + dur + 0.05);
   }
   function sfxGood() { tone(523, 0, .14, "triangle"); tone(659, .1, .14, "triangle"); tone(784, .2, .22, "triangle"); }
-  function sfxBad() { tone(220, 0, .18, "sawtooth", .08); tone(180, .12, .22, "sawtooth", .08); }
-  function sfxWin() {
-    [523, 659, 784, 1047, 784, 1047, 1319].forEach(function (f, i) { tone(f, i * .13, .2, "triangle", .16); });
-  }
+  function sfxBad() { tone(220, 0, .18, "sawtooth", .07); tone(170, .12, .24, "sawtooth", .07); }
+  function sfxTick(i) { tone(420 + i * 22, 0, .05, "square", .035); }
+  function sfxLock() { tone(880, 0, .1, "triangle", .14); tone(1175, .08, .18, "triangle", .14); }
+  function sfxReveal() { tone(260, 0, 1.6, "sine", .07, 880); }
+  function sfxWin() { [523, 659, 784, 1047, 784, 1047, 1319].forEach(function (f, i) { tone(f, i * .13, .2, "triangle", .16); }); }
 
+  var ICON_ON = "#i-volume", ICON_OFF = "#i-volume-off";
   el.mute.addEventListener("click", function () {
     state.muted = !state.muted;
-    el.mute.textContent = state.muted ? "🔇" : "🔊";
+    el.mute.querySelector("use").setAttribute("href", state.muted ? ICON_OFF : ICON_ON);
     el.mute.setAttribute("aria-label", state.muted ? "Turn sound on" : "Turn sound off");
     if (state.muted && window.speechSynthesis) window.speechSynthesis.cancel();
   });
 
-  /* ---------- speech ---------- */
   function speak(text) {
     if (state.muted || !("speechSynthesis" in window)) return;
     try {
       window.speechSynthesis.cancel();
       var u = new SpeechSynthesisUtterance(text);
-      u.rate = 0.95; u.pitch = 1.4; u.volume = 1;
+      u.rate = 0.95; u.pitch = 1.35; u.volume = 1;
       var voices = window.speechSynthesis.getVoices() || [];
       var en = voices.filter(function (v) { return /^en/i.test(v.lang); });
       if (en.length) u.voice = en[0];
       window.speechSynthesis.speak(u);
-    } catch (e) { /* speech is a bonus, ignore failures */ }
+    } catch (e) { /* speech is a bonus */ }
   }
 
-  /* ---------- mascot ---------- */
-  var useImage = !!CFG.mascotImage;
-  if (useImage) {
-    el.img.src = CFG.mascotImage;
-    el.img.hidden = false;
-    el.svg.style.display = "none";
-    el.img.addEventListener("error", function () {
-      // Fall back to the drawn mascot if the image path is wrong.
-      useImage = false;
-      el.img.hidden = true;
-      el.svg.style.display = "";
-      console.warn("Could not load " + CFG.mascotImage + ", using the built-in mascot.");
-    });
+  /* ---------- the mascot's poses ---------- */
+  var poseEls = {}, curPose = null, poseTimer = null, poseLoop = null;
+  Object.keys(CFG.poses).forEach(function (name) {
+    var im = new Image();
+    im.className = "pose"; im.alt = ""; im.decoding = "async"; im.draggable = false;
+    im.src = CFG.poses[name];
+    el.poses.appendChild(im);
+    poseEls[name] = im;
+  });
+  el.ghost.src = CFG.poses.calm;
+
+  function setPose(name) {
+    var next = poseEls[name] || poseEls.calm;
+    if (!next || next === curPose) return;
+    if (curPose) curPose.classList.remove("on");
+    next.classList.add("on");
+    curPose = next;
+  }
+  function pulsePose(name, ms) {
+    setPose(name);
+    clearTimeout(poseTimer);
+    poseTimer = setTimeout(function () { setPose("calm"); }, ms);
+  }
+  function restartAnim(node, cls) {
+    node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls);
+    node.addEventListener("animationend", function done() { node.classList.remove(cls); node.removeEventListener("animationend", done); });
   }
 
-  function partsFor(round) {
-    // Spread the 5 mascot parts across however many rounds there are.
-    var per = PART_COUNT / TOTAL;
-    var from = Math.round(round * per);
-    var to = Math.round((round + 1) * per);
-    var list = [];
-    for (var i = from; i < to; i++) list.push(i);
-    return list;
-  }
-
-  function resetMascot() {
-    el.stage.classList.remove("alive");
-    var parts = el.svg.querySelectorAll(".part");
-    for (var i = 0; i < parts.length; i++) {
-      parts[i].classList.add("broken");
-      parts[i].classList.remove("fixed-pop");
-    }
-    el.img.style.setProperty("--p", 0);
-    el.glitch.style.setProperty("--glitch", 1);
-    el.bubble.hidden = true;
-  }
-
-  function revealProgress(round) {
-    // round = number of rounds solved so far
-    partsFor(round - 1).forEach(function (n) {
-      var p = el.svg.querySelector('.part[data-part="' + n + '"]');
-      if (p) {
-        p.classList.remove("broken");
-        p.classList.add("fixed-pop");
-      }
-    });
-    el.img.style.setProperty("--p", (round / TOTAL).toFixed(2));
-    el.glitch.style.setProperty("--glitch", (1 - round / TOTAL).toFixed(2));
-  }
-
-  function spawnBugs() {
-    el.bugs.innerHTML = "";
-    bugEls = [];
-    var icons = ["🐛", "🪲", "🐞", "🪳", "🐜"];
-    for (var i = 0; i < TOTAL; i++) {
-      var b = document.createElement("span");
-      b.className = "bug";
-      b.textContent = icons[i % icons.length];
-      // Scatter bugs over the mascot but keep them away from the very edge.
-      b.style.left = (18 + Math.random() * 64) + "%";
-      b.style.top = (16 + Math.random() * 68) + "%";
-      b.style.animationDelay = (-Math.random() * 2) + "s";
-      el.bugs.appendChild(b);
-      bugEls.push(b);
+  /* ---------- speech bubble ---------- */
+  var typeTimer = null, stageLine = "";
+  function say(text, typed) {
+    clearInterval(typeTimer);
+    if (!text) { el.bubble.hidden = true; return; }
+    el.bubble.hidden = false;
+    if (typed && !REDUCED) {
+      var i = 0;
+      el.bubble.textContent = "";
+      typeTimer = setInterval(function () {
+        i++; el.bubble.textContent = text.slice(0, i);
+        if (i >= text.length) clearInterval(typeTimer);
+      }, 28);
+    } else {
+      el.bubble.textContent = text;
+      el.bubble.style.animation = "none"; void el.bubble.offsetWidth; el.bubble.style.animation = "";
     }
   }
-
-  function squashBug() {
-    var b = bugEls.pop();
-    if (!b) return;
-    b.classList.add("squash");
-    setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 520);
+  function sayStage(text) { stageLine = text; say(text); announce(text); }
+  function sayTemp(text, ms) {
+    say(text);
+    later(function () { if (stageLine && !state.finished) say(stageLine); }, ms);
   }
 
-  /* ---------- word tiles ---------- */
+  /* ---------- the reveal: bottom to top ---------- */
+  function insetFor(p) { return p >= 1 ? 0 : (p <= 0 ? 100 : HEAD_TOP + (100 - HEAD_TOP) * (1 - p)); }
+  function setReveal(p, instant) {
+    var inset = insetFor(p), d = instant ? "0ms" : REVEAL_MS + "ms", v = "inset(" + inset + "% 0 0 0)";
+    el.reveal.style.transitionDuration = d;
+    el.scan.style.transitionDuration = d + ", .4s";
+    el.reveal.style.clipPath = v; el.reveal.style.webkitClipPath = v;
+    el.scan.style.top = inset + "%";
+  }
+  function revealTo(p) {
+    el.scan.style.opacity = 1;
+    setReveal(p, false);
+    trail(REVEAL_MS);
+    later(function () { el.scan.style.opacity = 0; }, REVEAL_MS + 150);
+  }
+
+  var SPARK_COLORS = ["#F15D22", "#FAB82B", "#5E91FF", "#31C853", "#FE804E"];
+  function spawnSparks(y, n) {
+    for (var i = 0; i < n; i++) {
+      var s = document.createElement("div");
+      s.className = "sp";
+      s.style.left = (6 + Math.random() * 88) + "%";
+      s.style.top = (y + (Math.random() * 16 - 8)) + "px";
+      s.style.setProperty("--s", (8 + Math.random() * 12) + "px");
+      s.style.setProperty("--c", pick(SPARK_COLORS));
+      s.addEventListener("animationend", function () { if (this.parentNode) this.parentNode.removeChild(this); });
+      el.sparkles.appendChild(s);
+    }
+  }
+  function trail(ms) {
+    if (REDUCED) return;
+    var end = Date.now() + ms;
+    var t = setInterval(function () {
+      if (Date.now() > end) { clearInterval(t); return; }
+      spawnSparks(el.scan.offsetTop, 2);
+    }, 110);
+    timers.push(t);
+  }
+
+  /* ---------- secret word tiles and stepper ---------- */
   function buildWord() {
     el.word.innerHTML = "";
     for (var i = 0; i < TOTAL; i++) {
       var t = document.createElement("div");
-      t.className = "tile";
-      t.textContent = "?";
+      t.className = "tile"; t.textContent = "?";
       el.word.appendChild(t);
     }
+    el.word.setAttribute("aria-label", "Secret word, " + TOTAL + " letters");
   }
-  function revealTile(i) {
+  function lockTile(i, letter) {
     var t = el.word.children[i];
-    t.textContent = letterFor(ROUNDS[i].answer);
-    t.classList.add("on");
+    t.textContent = letter; t.classList.add("on");
   }
-
-  /* ---------- progress dots ---------- */
-  function renderProgress() {
-    el.progress.innerHTML = "";
+  function renderStepper() {
+    el.stepper.innerHTML = "";
     for (var i = 0; i < TOTAL; i++) {
-      var d = document.createElement("span");
-      d.className = "dot" + (i < state.idx ? " done" : (i === state.idx ? " now" : ""));
-      el.progress.appendChild(d);
+      var li = document.createElement("li");
+      var dot = document.createElement("span");
+      dot.className = "dot";
+      if (i < state.solved) {
+        li.className = "done";
+        dot.innerHTML = '<svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>';
+      } else {
+        if (i === state.idx && !state.finished) li.className = "now";
+        dot.textContent = i + 1;
+      }
+      li.appendChild(dot);
+      el.stepper.appendChild(li);
     }
   }
 
-  /* ---------- game flow ---------- */
-  function showOnly(which) {
+  /* ---------- screens ---------- */
+  function showScreen(which) {
     el.start.hidden = which !== "start";
     el.play.hidden = which !== "play";
     el.win.hidden = which !== "win";
   }
 
-  function startGame() {
-    state.name = el.nameInput.value.trim();
-    state.idx = 0;
-    state.busy = false;
-    resetMascot();
-    spawnBugs();
-    buildWord();
-    showOnly("play");
-    showRound();
-    // Browsers only allow audio after a tap, so warm it up here.
-    var c = ctx(); if (c && c.state === "suspended") c.resume();
+  /* ---------- keypad mode for touch screens ---------- */
+  function setKeypadMode() {
+    var on = mq("(pointer: coarse)") || window.innerWidth <= 820;
+    document.body.classList.toggle("has-keypad", on);
+    el.answer.setAttribute("inputmode", on ? "none" : "numeric");
+  }
+  window.addEventListener("resize", setKeypadMode);
+  setKeypadMode();
+
+  /* ---------- game flow ---------- */
+  function resetStage() {
+    clearTimers();
+    clearInterval(poseLoop); clearTimeout(poseTimer);
+    el.stage.classList.remove("alive");
+    el.sparkles.innerHTML = "";
+    el.scan.style.opacity = 0;
+    setReveal(0, true);
+    setPose("calm");
+    stageLine = MSG.intro;
+    say(MSG.intro);
   }
 
+  function startGame() {
+    state.name = el.nameInput.value.trim();
+    state.idx = 0; state.solved = 0; state.wrong = 0; state.streakWrong = 0; state.mistakes = 0;
+    state.busy = false; state.finished = false;
+    ctx(); // unlock audio on this tap
+    resetStage();
+    buildWord();
+    showScreen("play");
+    showRound();
+  }
+
+  function toTop() { if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" }); }
+
   function showRound() {
+    toTop(); // keep the mascot in view on small screens
     var r = ROUNDS[state.idx];
-    state.wrong = 0;
-    state.busy = false;
-    el.stepLabel.textContent = "Bug " + (state.idx + 1) + " of " + TOTAL;
+    state.wrong = 0; state.busy = false;
+    el.clueLabel.textContent = "Clue " + (state.idx + 1) + " of " + TOTAL;
     el.sumText.textContent = r.sum + " = ?";
-    el.answer.value = "";
-    el.feedback.textContent = "";
-    el.feedback.className = "feedback";
+    el.answer.value = ""; el.answer.className = "";
+    el.feedback.textContent = ""; el.feedback.className = "feedback";
     el.hint.hidden = true;
     el.decodeBox.hidden = true;
     el.askBox.hidden = false;
-    renderProgress();
-    // Avoid popping the keyboard open on touch screens before the child is ready.
-    if (!("ontouchstart" in window)) el.answer.focus();
+    renderStepper();
+    if (!mq("(pointer: coarse)")) el.answer.focus();
+    announce("Clue " + (state.idx + 1) + " of " + TOTAL + ": " + r.sum + " equals what?");
   }
 
-  function buildAlpha(hit) {
+  function showHint() {
+    var h = ROUNDS[state.idx].hint;
+    if (!h) return;
+    el.hint.textContent = "Hint: " + h;
+    el.hint.hidden = false;
+  }
+  el.hintBtn.addEventListener("click", function () {
+    if (el.hint.hidden) showHint(); else el.hint.hidden = true;
+  });
+
+  function onWrong() {
+    state.wrong++; state.streakWrong++; state.mistakes++;
+    sfxBad();
+    el.feedback.textContent = pick(MSG.wrong);
+    el.feedback.className = "feedback bad";
+    el.answer.className = "bad";
+    restartAnim(el.sumText, "shake");
+    restartAnim(el.tiger, "shake");
+    pulsePose(state.streakWrong >= 3 ? "cry" : "sad", 1600);
+    sayTemp(fill(pick(MSG.wrongBubble)), 2600);
+    if (state.wrong >= 2) showHint();
+    setTimeout(function () { el.answer.value = ""; el.answer.className = ""; if (!mq("(pointer: coarse)")) el.answer.focus(); }, 650);
+  }
+
+  function buildAlpha() {
     el.alpha.innerHTML = "";
     for (var i = 1; i <= 26; i++) {
       var s = document.createElement("span");
       s.textContent = letterFor(i);
-      s.title = i;
+      s.setAttribute("data-n", i);
       el.alpha.appendChild(s);
     }
-    // Walk along the alphabet until we land on the right letter.
-    var n = 0;
-    var step = setInterval(function () {
-      n++;
-      var spans = el.alpha.children;
-      if (n > 1) spans[n - 2].classList.remove("hit");
-      spans[n - 1].classList.add("hit");
-      if (n >= hit) {
-        clearInterval(step);
-        for (var k = 0; k < hit - 1; k++) spans[k].classList.add("lit");
-      }
-    }, Math.max(35, Math.min(90, 1400 / hit)));
+  }
+  function walkAlpha(n, done) {
+    var cells = el.alpha.children, i = 0, step = REDUCED ? 0 : Math.max(32, Math.min(80, 1300 / n));
+    if (!step) {
+      for (var k = 0; k < n - 1; k++) cells[k].classList.add("lit");
+      cells[n - 1].classList.add("hit");
+      done(); return;
+    }
+    var t = setInterval(function () {
+      if (i > 0) { cells[i - 1].classList.remove("hit"); cells[i - 1].classList.add("lit"); }
+      cells[i].classList.add("hit");
+      sfxTick(i);
+      i++;
+      if (i >= n) { clearInterval(t); later(done, 380); }
+    }, step);
+    timers.push(t);
+  }
+
+  // the letter tile flies up into the secret word
+  function fly(fromEl, toEl, text, done) {
+    if (REDUCED || !fromEl.animate) { done(); return; }
+    var a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
+    var c = document.createElement("div");
+    c.className = "fly"; c.textContent = text;
+    c.style.left = a.left + "px"; c.style.top = a.top + "px"; c.style.width = a.width + "px"; c.style.height = a.height + "px";
+    document.body.appendChild(c);
+    var dx = b.left - a.left, dy = b.top - a.top, s = b.width / a.width;
+    var anim = c.animate([
+      { transform: "translate(0,0) scale(1)" },
+      { transform: "translate(" + (dx * 0.45) + "px," + (dy * 0.45 - 70) + "px) scale(1.12)", offset: 0.5 },
+      { transform: "translate(" + dx + "px," + dy + "px) scale(" + s + ")" }
+    ], { duration: 750, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" });
+    anim.onfinish = function () { if (c.parentNode) c.parentNode.removeChild(c); done(); };
   }
 
   function onCorrect() {
-    var r = ROUNDS[state.idx];
-    var letter = letterFor(r.answer);
-    state.busy = true;
+    var i = state.idx, r = ROUNDS[i], letter = letterFor(r.answer), last = i === TOTAL - 1;
+    state.busy = true; state.streakWrong = 0;
     sfxGood();
+    pulsePose("happy", 1500);
+    el.answer.className = "good";
+    el.feedback.textContent = "Correct!"; el.feedback.className = "feedback good";
 
+    // decode view
     el.askBox.hidden = true;
     el.decodeBox.hidden = false;
-    el.decodeLine.innerHTML = r.sum + " = <b>" + r.answer + "</b> &rarr; letter number " + r.answer +
-      " is <b>" + letter + "</b>";
-    buildAlpha(r.answer);
+    el.decodeLine.textContent = r.sum + " = ";
+    var b = document.createElement("b"); b.textContent = r.answer; el.decodeLine.appendChild(b);
+    el.decodeNote.textContent = "Letter number " + r.answer + " is";
+    el.bigLetter.textContent = letter;
+    el.bigLetter.className = "big-letter"; el.bigLetter.style.visibility = "visible";
+    el.nextBtn.disabled = true;
+    el.nextBtn.textContent = last ? "Wake up " + CFG.mascotName : "Next clue";
+    buildAlpha();
+    announce(r.sum + " is " + r.answer + ", and letter " + r.answer + " is " + letter + ".");
 
-    var solved = state.idx + 1;
-    var delay = Math.max(35, Math.min(90, 1400 / r.answer)) * r.answer + 250;
-    setTimeout(function () {
-      squashBug();
-      revealTile(state.idx);
-      revealProgress(solved);
-      sfxGood();
-    }, delay);
+    walkAlpha(r.answer, function () {
+      el.bigLetter.classList.add("pop");
+      later(function () {
+        fly(el.bigLetter, el.word.children[i], letter, function () {
+          el.bigLetter.style.visibility = "hidden";
+          el.decodeNote.textContent = "Locked in!";
+          lockTile(i, letter);
+          sfxLock();
+          state.solved = i + 1;
+          renderStepper();
+          if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: REDUCED ? "auto" : "smooth" });
 
-    var isLast = solved === TOTAL;
-    // Replace any older continue button.
-    var old = el.decodeBox.querySelector(".next");
-    if (old) old.remove();
-    var next = document.createElement("button");
-    next.className = "btn primary next";
-    next.type = "button";
-    next.textContent = isLast ? "Wake up " + CFG.mascotName + "!" : "Next bug";
-    next.addEventListener("click", function () {
-      if (isLast) { win(); } else { state.idx++; showRound(); }
+          // the tiger rises
+          revealTo(state.solved / TOTAL);
+          sfxReveal();
+          restartAnim(el.tiger, "hop");
+          sayStage(last ? MSG.ready : (MSG.stages[i] || ""));
+
+          later(function () { el.nextBtn.disabled = false; el.nextBtn.focus({ preventScroll: true }); }, REVEAL_MS + 200);
+        });
+      }, REDUCED ? 0 : 500);
     });
-    el.decodeBox.appendChild(next);
-    setTimeout(function () { next.focus(); }, delay);
   }
 
-  function onWrong() {
-    state.wrong++;
-    sfxBad();
-    el.feedback.textContent = pick(CFG.messages.wrong);
-    el.feedback.className = "feedback bad";
-    el.sumText.classList.remove("shake");
-    void el.sumText.offsetWidth; // restart the animation
-    el.sumText.classList.add("shake");
-    if (state.wrong >= 2 && ROUNDS[state.idx].hint) {
-      el.hint.textContent = "Hint: " + ROUNDS[state.idx].hint;
-      el.hint.hidden = false;
-    }
-    el.answer.select();
-  }
-
-  el.form.addEventListener("submit", function (e) {
-    e.preventDefault();
+  function submitAnswer() {
     if (state.busy) return;
     var raw = el.answer.value.trim();
     if (raw === "") {
@@ -307,47 +395,98 @@
       return;
     }
     if (parseInt(raw, 10) === ROUNDS[state.idx].answer) onCorrect(); else onWrong();
-  });
-
-  // Digits only
+  }
+  el.form.addEventListener("submit", function (e) { e.preventDefault(); submitAnswer(); });
   el.answer.addEventListener("input", function () {
     el.answer.value = el.answer.value.replace(/[^0-9]/g, "");
+    el.answer.className = "";
+  });
+  el.keypad.addEventListener("click", function (e) {
+    var btn = e.target.closest("button");
+    if (!btn || state.busy) return;
+    var k = btn.getAttribute("data-key");
+    if (k === "back") el.answer.value = el.answer.value.slice(0, -1);
+    else if (k === "go") submitAnswer();
+    else if (el.answer.value.length < 3) el.answer.value += k;
+    el.answer.className = "";
   });
 
-  /* ---------- win ---------- */
-  function win() {
-    showOnly("win");
-    var word = ROUNDS.map(function (r) { return letterFor(r.answer); }).join("");
-    el.winTitle.textContent = fill(CFG.messages.winTitle);
-    el.winText.textContent = "The secret word was " + word + ". Look who is awake!";
-    state.thanks = fill(CFG.messages.thanks);
+  el.nextBtn.addEventListener("click", function () {
+    if (el.nextBtn.disabled) return;
+    if (state.idx === TOTAL - 1) { wake(); return; }
+    state.idx++;
+    showRound();
+  });
 
-    el.stage.classList.add("alive");
-    el.glitch.style.setProperty("--glitch", 0);
-    el.bubble.textContent = state.thanks;
-    el.bubble.hidden = false;
+  /* ---------- the big moment ---------- */
+  function wake() {
+    el.nextBtn.disabled = true;
+    state.finished = true;
+    state.thanks = fill(MSG.thanks);
+    toTop();
+    setPose("shocked");
+    sayStage(fill(MSG.waking));
+    restartAnim(el.tiger, "shake");
+    tone(300, 0, .5, "triangle", .12, 900);
 
-    sfxWin();
-    burstConfetti();
-    setTimeout(function () { speak(state.thanks); }, 700);
+    later(function () {
+      el.stage.classList.add("alive");
+      renderStepper();
+      showWin();
+      var seq = ["party", "cheer", "happy"], n = 0;
+      setPose(seq[0]);
+      poseLoop = setInterval(function () { n = (n + 1) % seq.length; setPose(seq[n]); }, 1100);
+      burstConfetti(); later(burstConfetti, 900);
+      sfxWin();
+      say(state.thanks, true);
+      announce(state.thanks);
+      later(function () { speak(state.thanks); }, 450);
+    }, REDUCED ? 200 : 1200);
   }
 
-  el.speakBtn.addEventListener("click", function () { speak(state.thanks); });
+  function showWin() {
+    el.winTitle.textContent = fill(MSG.winTitle);
+    var word = ROUNDS.map(function (r) { return letterFor(r.answer); }).join("");
+    var slips = state.mistakes;
+    el.winText.textContent = "You cracked all " + TOTAL + " clues and the secret word was " + word + ". " +
+      (slips === 0 ? "Not a single slip. Amazing!" : slips + (slips === 1 ? " slip" : " slips") + " along the way, and you kept going. That's what maths stars do!");
+    var count = slips === 0 ? 3 : (slips <= 2 ? 2 : 1);
+    el.stars.innerHTML = "";
+    for (var i = 0; i < 3; i++) {
+      var s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      s.setAttribute("class", "star" + (i < count ? " on" : ""));
+      s.setAttribute("viewBox", "0 0 24 24");
+      s.style.setProperty("--d", (0.2 + i * 0.25) + "s");
+      s.innerHTML = '<use href="#i-star"/>';
+      el.stars.appendChild(s);
+    }
+    showScreen("win");
+  }
+
+  el.hearBtn.addEventListener("click", function () { ctx(); speak(state.thanks); });
   el.againBtn.addEventListener("click", function () {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
-    resetMascot();
-    showOnly("start");
+    state.finished = false; state.solved = 0;
     clearConfetti();
-    el.bugs.innerHTML = "";
+    resetStage();
     buildWord();
+    showScreen("start");
   });
   el.startBtn.addEventListener("click", startGame);
   el.nameInput.addEventListener("keydown", function (e) { if (e.key === "Enter") startGame(); });
 
+  // typing digits works even if the box lost focus
+  document.addEventListener("keydown", function (e) {
+    if (el.play.hidden || el.askBox.hidden || state.busy) return;
+    if (/^[0-9]$/.test(e.key) && document.activeElement !== el.answer && !e.ctrlKey && !e.metaKey) {
+      if (el.answer.value.length < 3) el.answer.value += e.key;
+      el.answer.focus();
+    }
+  });
+
   /* ---------- confetti ---------- */
   var cctx = el.confetti.getContext("2d");
-  var pieces = [];
-  var raf = 0;
+  var pieces = [], raf = 0;
   function sizeCanvas() {
     var dpr = window.devicePixelRatio || 1;
     el.confetti.width = window.innerWidth * dpr;
@@ -358,18 +497,15 @@
   sizeCanvas();
 
   function burstConfetti() {
-    var colors = ["#d4400a", "#ffd23f", "#4fd1c5", "#8f80ee", "#ff8fa3", "#1f9d6b"];
+    if (REDUCED) return;
+    var colors = ["#F15D22", "#FAB82B", "#5E91FF", "#31C853", "#FE804E", "#212638"];
     var w = window.innerWidth;
-    for (var i = 0; i < 160; i++) {
+    for (var i = 0; i < 150; i++) {
       pieces.push({
-        x: w / 2 + (Math.random() - .5) * w * .5,
-        y: -20 - Math.random() * 200,
-        vx: (Math.random() - .5) * 5,
-        vy: 2 + Math.random() * 4,
-        r: 5 + Math.random() * 6,
-        rot: Math.random() * 6,
-        vr: (Math.random() - .5) * .3,
-        c: colors[i % colors.length]
+        x: w / 2 + (Math.random() - .5) * w * .6, y: -20 - Math.random() * 220,
+        vx: (Math.random() - .5) * 5, vy: 2 + Math.random() * 4,
+        r: 6 + Math.random() * 7, rot: Math.random() * 6, vr: (Math.random() - .5) * .3,
+        c: colors[i % colors.length], round: Math.random() < .3
       });
     }
     if (!raf) raf = requestAnimationFrame(tick);
@@ -377,23 +513,22 @@
   function tick() {
     cctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     pieces.forEach(function (p) {
-      p.x += p.vx; p.y += p.vy; p.vy += 0.04; p.rot += p.vr;
-      cctx.save();
-      cctx.translate(p.x, p.y); cctx.rotate(p.rot);
-      cctx.fillStyle = p.c;
-      cctx.fillRect(-p.r / 2, -p.r / 3, p.r, p.r * .6);
+      p.x += p.vx; p.y += p.vy; p.vy += 0.045; p.rot += p.vr;
+      cctx.save(); cctx.translate(p.x, p.y); cctx.rotate(p.rot); cctx.fillStyle = p.c;
+      if (p.round) { cctx.beginPath(); cctx.arc(0, 0, p.r / 2.2, 0, 6.3); cctx.fill(); }
+      else cctx.fillRect(-p.r / 2, -p.r / 3, p.r, p.r * .6);
       cctx.restore();
     });
     pieces = pieces.filter(function (p) { return p.y < window.innerHeight + 30; });
-    if (pieces.length) { raf = requestAnimationFrame(tick); }
+    if (pieces.length) raf = requestAnimationFrame(tick);
     else { raf = 0; cctx.clearRect(0, 0, window.innerWidth, window.innerHeight); }
   }
   function clearConfetti() { pieces = []; }
 
-  /* ---------- initial state ---------- */
-  resetMascot();
+  /* ---------- first paint ---------- */
+  el.wordLabel.textContent = CFG.mascotName.toLowerCase() + "'s secret word";
+  resetStage();
   buildWord();
-  showOnly("start");
-  // Some browsers load voices late; touching the list early helps.
+  showScreen("start");
   if ("speechSynthesis" in window) window.speechSynthesis.getVoices();
 })();
