@@ -14,13 +14,13 @@ window.GAME_CONFIG = {
   // from Figma (2x or 3x PNG, transparent background) and overwrite the files in assets/tiger/.
   // Keep the same file names, or point these paths somewhere else.
   poses: {
-    calm:    "assets/tiger/calm.png",     // waiting to be found
-    happy:   "assets/tiger/happy.png",    // right answer
-    sad:     "assets/tiger/sad.png",      // wrong answer
-    cry:     "assets/tiger/cry.png",      // three wrong answers in a row
-    shocked: "assets/tiger/shocked.png",  // the moment it wakes up
-    party:   "assets/tiger/party.png",    // celebration, with confetti
-    cheer:   "assets/tiger/cheer.png"     // celebration
+    calm:    "./calm.png",     // waiting to be found
+    happy:   "./happy.png",    // right answer
+    sad:     "./sad.png",      // wrong answer
+    cry:     "./cry.png",      // three wrong answers in a row
+    shocked: "./shocked.png",  // the moment it wakes up
+    party:   "./party.png",    // celebration, with confetti
+    cheer:   "./cheer.png"     // celebration
   },
 
   // How far down the image the mascot's head starts (in %). Keeps the last step of the reveal snug.
