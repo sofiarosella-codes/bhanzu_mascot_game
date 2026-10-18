@@ -13,13 +13,13 @@ window.GAME_CONFIG = {
   // The tiger artwork. One image is used for every pose. To give the tiger different
   // expressions later, point individual poses at their own PNGs (square, transparent background).
   poses: {
-    calm:    "assets/tiger/mascot.png",
-    happy:   "assets/tiger/mascot.png",
-    sad:     "assets/tiger/mascot.png",
-    cry:     "assets/tiger/mascot.png",
-    shocked: "assets/tiger/mascot.png",
-    party:   "assets/tiger/mascot.png",
-    cheer:   "assets/tiger/mascot.png"
+    calm:    "./mascot.png",
+    happy:   "./mascot.png",
+    sad:     "./mascot.png",
+    cry:     "./mascot.png",
+    shocked: "./mascot.png",
+    party:   "./mascot.png",
+    cheer:   "./mascot.png"
   },
 
   // How far down the image the mascot's head starts (in %). Keeps the last step of the reveal snug.
