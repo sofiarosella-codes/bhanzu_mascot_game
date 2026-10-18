@@ -10,21 +10,20 @@
 window.GAME_CONFIG = {
   mascotName: "Zippy",
 
-  // The tiger's expressions. To use sharper artwork, export the same seven poses
-  // from Figma (2x or 3x PNG, transparent background) and overwrite the files in assets/tiger/.
-  // Keep the same file names, or point these paths somewhere else.
+  // The tiger artwork. One image is used for every pose. To give the tiger different
+  // expressions later, point individual poses at their own PNGs (square, transparent background).
   poses: {
-    calm:    "./calm.png",     // waiting to be found
-    happy:   "./happy.png",    // right answer
-    sad:     "./sad.png",      // wrong answer
-    cry:     "./cry.png",      // three wrong answers in a row
-    shocked: "./shocked.png",  // the moment it wakes up
-    party:   "./party.png",    // celebration, with confetti
-    cheer:   "./cheer.png"     // celebration
+    calm:    "assets/tiger/mascot.png",
+    happy:   "assets/tiger/mascot.png",
+    sad:     "assets/tiger/mascot.png",
+    cry:     "assets/tiger/mascot.png",
+    shocked: "assets/tiger/mascot.png",
+    party:   "assets/tiger/mascot.png",
+    cheer:   "assets/tiger/mascot.png"
   },
 
   // How far down the image the mascot's head starts (in %). Keeps the last step of the reveal snug.
-  revealTop: 6,
+  revealTop: 24,
 
   rounds: [
     { sum: "13 × 2", answer: 26, hint: "Try 10 × 2 first, then add 3 × 2." },
